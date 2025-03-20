@@ -13,57 +13,69 @@ DB_NAME = os.getenv("DB_NAME")
 
 db = pymysql.connect(
     host=DB_HOST,
-    user = DB_USER,
+    user=DB_USER,
     password=DB_PASSWORD,
-    database = DB_NAME
+    database=DB_NAME
 )
 cursor = db.cursor()
 
-# 요청할 URL (실제 페이지 URL을 입력해야 함)
-base_url = "https://www.uljin.go.kr"  # 실제 URL로 변경 필요
-board_url = "https://www.uljin.go.kr/board/list.uljin?boardId=BBS_NOTICE_UJ&menuCd=DOM_000000103002001000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage="
+base_url = "https://www.goheung.go.kr"
+board_url = "https://www.goheung.go.kr/boardList.do?pageId=www96&boardId=BD_00018&movePage="
 
-# <ul class="bbs_list"> 내부의 <li> 하위 <a> 태그에서 href 가져오기
-for page in range(1,3):
+# 2페이지까지만 크롤링
+for page in range(1, 3):
     url = board_url + str(page)
-    print(url)
+    print(f"페이지 크롤링: {url}")
+
     response = requests.get(url)
-    response.raise_for_status()  # 요청이 성공했는지 확인
+    response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
 
     links = []
-    for li in soup.select("ul.bbs_list li a"):
-        link = li.get("href")
-        if link:
-            if link.startswith("/"):
-                link = base_url + link
-            links.append(link)
+    for a_tag in soup.select(".bd_list_body .subject a"):
+        link = a_tag.get("href")
+        if link and link.startswith("/boardView.do"):
+            full_link = base_url + link
+            links.append(full_link)
+            print(f"공지사항 링크: {full_link}")
 
-    # 각 공지사항 페이지에서 데이터 크롤링
+    # 개별 공지사항 페이지 크롤링
     for i, link in enumerate(links, 1):
-
         notice_response = requests.get(link)
         notice_response.raise_for_status()
         notice_soup = BeautifulSoup(notice_response.text, "html.parser")
 
+        # 제목 크롤링
         title_tag = notice_soup.find("h4")
         title = title_tag.text.strip() if title_tag else "제목 없음"
 
-        # 작성일 크롤링
-        date_tag = notice_soup.find("th", string="작성일")
-        date = date_tag.find_next("td").text.strip() if date_tag else "N/A"
-
-        # 이미지 src 크롤링
-        img_tag = notice_soup.find("td", class_="bbs_content").find("img") if notice_soup.find("td", class_="bbs_content") else None
+        # 이미지 크롤링
+        img_tag = notice_soup.select_one(".view_img img")
         img_src = base_url + img_tag["src"] if img_tag else None
 
-        # 내용 크롤링 (p 태그 내용 추출)
-        content_tags = notice_soup.find("td", class_="bbs_content").find_all("p") if notice_soup.find("td", class_="bbs_content") else []
-        content = "\n".join([p.text.strip() for p in content_tags]) if content_tags else "내용 없음"
+        # 작성일 크롤링
+        date_tag = notice_soup.select_one(".bd_view_top p span:nth-of-type(2)")
+        date = date_tag.text.replace("작성일 :", "").strip() if date_tag else "작성일 없음"
+
+        # 본문 내용 크롤링 (p 태그 + small 태그 포함)
+        content_div = notice_soup.find("div", class_="bd_view_cont")
+        content = ""
+
+        if content_div:
+            # <p> 태그 내용 가져오기 (줄바꿈을 '\n'으로 변환)
+            p_tags = content_div.find_all("p")
+            content = "\n".join([p.get_text(separator="\n").strip() for p in p_tags if p.text.strip()])
+
+            # <small> 태그 내용 추가
+            small_tag = content_div.find("small")
+            if small_tag:
+                content = f"{small_tag.text.strip()}\n\n{content}"
+
+        content = content.strip() if content else "내용 없음"
 
         # MySQL 저장
-        sql = "INSERT INTO notice (title, link, content, image, date) VALUES (%s, %s, %s, %s, %s)"
-        val = (title, link, content, img_src, date)
+        sql = "INSERT INTO notice (title, content, image, date) VALUES (%s, %s, %s, %s)"
+        val = (title, content, img_src, date)
         cursor.execute(sql, val)
         db.commit()
 
@@ -72,7 +84,10 @@ for page in range(1,3):
         print(f"페이지 {page} - {i}번째 공지사항")
         print("URL:", link)
         print("제목:", title)
-        print("작성일:", date)
         print("이미지 링크:", img_src)
-        print(f"내용: {content[:100]}...") 
+        print("작성일:", date)
+        print(f"내용: {content[:200]}...")
         print("=" * 100)
+
+cursor.close()
+db.close()

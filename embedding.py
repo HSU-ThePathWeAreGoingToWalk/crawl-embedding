@@ -29,7 +29,7 @@ cursor = db.cursor()
 
 #1. 테이블에서 데이터를 배열로 반환
 def crawled_data_to_array():
-    fetch_query = "SELECT id, title, link, content, date from notice"
+    fetch_query = "SELECT id, title, content, date from notice"
     cursor.execute(fetch_query)
     rows = cursor.fetchall()
     return rows
@@ -37,20 +37,19 @@ def crawled_data_to_array():
 #2. 메타데이터와 함께 임베딩 생성 및 저장
 def store_array_to_vector_db():
     embedding = OpenAIEmbeddings(model = 'text-embedding-3-large')
-    index_name = 'uljin-notice'
+    index_name = 'goheung-notice'
 
     rows = crawled_data_to_array()
     documents = []
-    for id, title, link, content, pub_date in rows:
+    for id, title, content, date in rows:
         #날짜를 타임스탬프로 변환
-        date_object = datetime.strptime(str(pub_date), "%Y-%m-%d %H:%M:%S")
+        date_object = datetime.strptime(str(date), "%Y-%m-%d %H:%M:%S")
         unix_timestamp = int(time.mktime(date_object.replace(hour=0, minute=0, second=0, microsecond=0).timetuple()))
 
         #문서 내용 생성
-        combined_content = f"Title: {title}\nLink: {link}\nContent: {content}"
+        combined_content = f"Title: {title}\nContent: {content}"
         metadata = {
             'title' : title,
-            'link' : link,
             'pub_date' : unix_timestamp
         }
         documents.append(Document(combined_content, metadata, id=str(id)))
