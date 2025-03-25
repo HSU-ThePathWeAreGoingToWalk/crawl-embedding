@@ -7,22 +7,13 @@ import Vision
 from typing import List, Tuple
 from dotenv import load_dotenv
 import os
-
+from datetime import datetime
 load_dotenv()
 
 DB_HOST = os.getenv("DB_HOST")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
-
-db = pymysql.connect(
-    host= DB_HOST,
-    user=DB_USER,
-    password=DB_PASSWORD,
-    database=DB_NAME
-)
-
-cursor = db.cursor()
 
 def pil2buf(pil_image: Image.Image):
     """Convert PIL image to buffer"""
@@ -81,42 +72,68 @@ def text_from_image(
             
         return res
 
-# Query images with content field that needs to be updated
-cursor.execute("SELECT id, image, content FROM notice WHERE image IS NOT NULL")
-image_rows = cursor.fetchall()
 
-if not image_rows:
-    print("No images found.")
-else:
-    for row in image_rows:
-        id, image_url, existing_content = row
-        try:
-            # Load image from URL
-            image = load_image_from_url(image_url)
+def update_notice_with_image_text(since_date: datetime):
+    """
+    DB에 저장된 notice 테이블에서 image URL이 존재하는 레코드를 조회하고
+    해당 이미지의 OCR 텍스트를 기존 content 필드에 추가하여 업데이트 함
+    """
 
-            # Perform OCR
-            recognized_text = text_from_image(image, recognition_level="accurate", language_preference=["ko-KR"], confidence_threshold=0.8)
-            extracted_text = " ".join([text for text, _, _ in recognized_text])
+    db = pymysql.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+    cursor = db.cursor()
 
-            # Prepare SQL query to concatenate existing content with extracted text
-            if existing_content:
-                new_content = f"{existing_content} {extracted_text}"
-            else:
-                new_content = extracted_text
+    # 기준일 이후의, 이미지가 있는 공지사항 조회
+    cursor.execute(
+        "SELECT id, image, content, date FROM notice WHERE image IS NOT NULL AND date > %s",
+        (since_date)
+    )
+    image_rows = cursor.fetchall()
 
-            # Print and update content in the database
-            print("\n")
-            print(f"Extracted text for ID {id}: {extracted_text}")
-            cursor.execute("UPDATE notice SET content = CONCAT(content, %s) WHERE id = %s", (f" {extracted_text.strip()}", id))
-            db.commit()
-            print(f"Updated content for ID {id}")
-            print("=" * 100)
+    if not image_rows:
+        print("No images found.")
+    else:
+        for row in image_rows:
+            id, image_url, existing_content, _ = row
+            try:
+                # 이미지 다운로드 및 PIL 이미지로 변환
+                image = load_image_from_url(image_url)
 
-        except requests.exceptions.RequestException as e:
-            print(f"Failed to download image for ID {id}: {e}")
-        except Exception as e:
-            print(f"Error for ID {id}: {e}")
+                # OCR 처리
+                recognized_text = text_from_image(
+                    image,
+                    recognition_level="accurate",
+                    language_preference=["ko-KR"],
+                    confidence_threshold=0.8
+                )
+                extracted_text = " ".join([text for text, _, _ in recognized_text])
 
-# Close database connection
-cursor.close()
-db.close()
+                # 기존 content와 합치기
+                if existing_content:
+                    new_content = f"{existing_content} {extracted_text}"
+                else:
+                    new_content = extracted_text
+
+                print("\n")
+                print(f"Extracted text for ID {id}: {extracted_text}")
+                # DB 업데이트 (기존 content에 덧붙이기)
+                cursor.execute(
+                    "UPDATE notice SET content = CONCAT(content, %s) WHERE id = %s",
+                    (f" {extracted_text.strip()}", id)
+                )
+                db.commit()
+                print(f"Updated content for ID {id}")
+                print("=" * 100)
+
+            except requests.exceptions.RequestException as e:
+                print(f"Failed to download image for ID {id}: {e}")
+            except Exception as e:
+                print(f"Error for ID {id}: {e}")
+
+    cursor.close()
+    db.close()
+

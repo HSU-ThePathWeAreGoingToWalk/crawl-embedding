@@ -26,8 +26,3 @@ def get_latest_date():
     print(latest_pub_date)
 
     return latest_pub_date
-
-
-# 현재 DB에서 standard(datetime) 이후의 공지만 필터링 (이후 임베딩 및 Pinecone에 저장)
-# def filtering(standard):
-    # 필터링 어떻게 하고 임베딩 어떻게 할지 고민하자
