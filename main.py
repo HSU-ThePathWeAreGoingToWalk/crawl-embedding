@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 
-from about_update_notices import get_latest_date
+from get_latest_notice_date import get_latest_date
 from crawl import crawl_new_notices
 from parse_images import update_notice_with_image_text
 from embedding import store_array_to_vector_db
 
 app = FastAPI()
 
-@app.post("/update-notices")
+@app.post("/notices/sync")
 def update():
 
     # 1. 현재 MySql DB에서 가장 최근 공지가 실린 날짜 가져오기
