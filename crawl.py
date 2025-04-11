@@ -1,32 +1,16 @@
-import os
-from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
-import pymysql
+from models import Notice
+from database import SessionLocal
 from datetime import datetime
-
-load_dotenv()
-
-DB_HOST = os.getenv("DB_HOST")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_NAME")
-
 
 def crawl_new_notices(since_date: datetime):
     """
-    기준일 이후의 공지사항만 크롤링하여 DB에 저장합니다.
-    DATETIME 타입에 맞게 'YYYY-MM-DD HH:MM:SS' 형식으로 날짜를 저장합니다.
+    기준일 이후의 공지사항만 크롤링하여 DB에 저장
+    SQLAlchemy를 사용하여 데이터베이스에 저장
+    DATETIME 타입에 맞게 'YYYY-MM-DD HH:MM:SS' 형식으로 날짜를 저장
     """
-    # 데이터베이스 연결
-    db = pymysql.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME
-    )
-    cursor = db.cursor()
-
+    session = SessionLocal()
     base_url = "https://www.goheung.go.kr"
     board_url = "https://www.goheung.go.kr/boardList.do?pageId=www96&boardId=BD_00018&movePage="
 
@@ -97,11 +81,10 @@ def crawl_new_notices(since_date: datetime):
 
             content = content.strip() if content else "내용 없음"
 
-            # MySQL에 공지사항 저장
-            sql = "INSERT INTO notice (title, content, image, date) VALUES (%s, %s, %s, %s)"
-            val = (title, content, img_src, formatted_date_str)
-            cursor.execute(sql, val)
-            db.commit()
+            # SQLAlchemy를 사용하여 공지사항 저장
+            new_notice = Notice(title=title, content=content, image=img_src, date=formatted_date_str)
+            session.add(new_notice)
+            session.commit()
 
             print("\n")
             print(f"페이지 {page} - {i}번째 공지사항")
@@ -112,5 +95,4 @@ def crawl_new_notices(since_date: datetime):
             print(f"내용: {content[:200]}...")
             print("=" * 100)
 
-    cursor.close()
-    db.close()
+    session.close()
