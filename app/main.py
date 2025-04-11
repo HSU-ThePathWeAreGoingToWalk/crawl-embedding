@@ -1,10 +1,10 @@
 from fastapi import FastAPI
-from models import Base
-from database import engine
-from get_latest_notice_date import get_latest_date
-from crawl import crawl_new_notices
-from parse_images import update_notice_with_image_text
-from embedding import store_array_to_vector_db
+from app.models import Base
+from app.database import engine
+from app.get_latest_notice_date import get_latest_date
+from app.crawl import crawl_new_notices
+from app.parse_images import update_notice_with_image_text
+from app.embedding import store_array_to_vector_db
 
 app = FastAPI()
 

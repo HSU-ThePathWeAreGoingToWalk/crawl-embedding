@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime
-from database import Base
+from app.database import Base
 
 # SQLAlchemy 모델 정의
 class Notice(Base):

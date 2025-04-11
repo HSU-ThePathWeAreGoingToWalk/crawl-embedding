@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
-from models import Notice
-from database import SessionLocal
+from app.models import Notice
+from app.database import SessionLocal
 from datetime import datetime
 
 def crawl_new_notices(since_date: datetime):

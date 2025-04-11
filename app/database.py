@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+from app.config import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
 
 # 데이터베이스 URL 생성
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"

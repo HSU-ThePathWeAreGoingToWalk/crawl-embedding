@@ -1,5 +1,5 @@
-from models import Notice
-from database import SessionLocal
+from app.models import Notice
+from app.database import SessionLocal
 from datetime import datetime
 
 def get_latest_date():

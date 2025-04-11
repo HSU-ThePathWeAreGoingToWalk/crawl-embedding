@@ -5,8 +5,8 @@ from PIL import Image
 import Vision
 from typing import List, Tuple
 from datetime import datetime
-from models import Notice
-from database import SessionLocal
+from app.models import Notice
+from app.database import SessionLocal
 
 # 이미지 처리 및 데이터베이스 작업을 위한 함수 정의
 def pil2buf(pil_image: Image.Image):

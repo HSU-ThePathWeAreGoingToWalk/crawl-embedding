@@ -1,8 +1,8 @@
 import time
 from datetime import datetime
-from models import Notice
-from database import SessionLocal
-from config import DATABASE
+from app.models import Notice
+from app.database import SessionLocal
+from app.config import DATABASE
 
 class Document:
     """
