@@ -146,7 +146,7 @@ CREATE DATABASE your_database_name;
 FastAPI 서버를 실행합니다:
 
 ```bash
-uvicorn app.main:app --reload
+venv/bin/python -m uvicorn app.main:app --reload 
 ```
 
 > 기본적으로 http://127.0.0.1:8000 에서 실행됩니다.
